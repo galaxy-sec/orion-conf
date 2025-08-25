@@ -3,6 +3,11 @@ name = "orion_conf"
 authors = ["wukong<sec-wukong@outlook.com>"]
 edition = "2024"
 version = "0.1.2"
+description = "conf storage"
+license = "MIT"
+repository = "https://github.com/galaxy-sec/orion-conf"
+keywords = ["conf", "utilities"]
+categories = ["conf"]
 
 [dependencies]
 # thiserror = "~2.0"
