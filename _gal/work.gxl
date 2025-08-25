@@ -1,0 +1,18 @@
+extern mod ver,git  { git = "https://github.com/galaxy-operators/cfm-gxl.git", channel = "${GXL_CHANNEL:main}" }
+
+mod envs  {
+
+  #[usage(desp="default mamcos", color="green")]
+  env default     {
+  }
+}
+
+mod main   {
+
+  flow lint        {
+    gx.cmd ( "cargo fmt", log : "1" , out:"true"  );
+    gx.cmd ( "cargo fix --allow-dirty", log : "1" , out:"true"  );
+    gx.cmd ( "cargo clippy --all-features --all-targets  -- -D warnings");
+  }
+
+}
