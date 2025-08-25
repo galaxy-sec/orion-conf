@@ -2,7 +2,7 @@
 name = "orion_conf"
 authors = ["wukong<sec-wukong@outlook.com>"]
 edition = "2024"
-version = "0.1.1"
+version = "0.1.2"
 
 [dependencies]
 # thiserror = "~2.0"
