@@ -5,7 +5,9 @@ use serde::de::DeserializeOwned;
 pub use serde_derive::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
-use crate::{IniAble, error::SerdeResult, traits::Configable};
+use crate::{
+    IniAble, JsonAble, Tomlable, ValueConfable, Yamlable, error::SerdeResult, traits::Configable,
+};
 
 impl<T> Configable<T> for T
 where
@@ -42,14 +44,6 @@ where
     }
 }
 
-pub trait JsonAble<T>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    fn from_json(path: &Path) -> SerdeResult<T>;
-    fn save_json(&self, path: &Path) -> SerdeResult<()>;
-}
-
 impl<T> JsonAble<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -74,14 +68,6 @@ where
     }
 }
 
-pub trait Tomlable<T>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    fn from_toml(path: &Path) -> SerdeResult<T>;
-    fn save_toml(&self, path: &Path) -> SerdeResult<()>;
-}
-
 impl<T> Tomlable<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -104,14 +90,6 @@ where
     }
 }
 
-pub trait ValueConfable<T>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    fn from_valconf(path: &Path) -> SerdeResult<T>;
-    fn save_valconf(&self, path: &Path) -> SerdeResult<()>;
-}
-
 impl<T> ValueConfable<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -122,14 +100,6 @@ where
     fn save_valconf(&self, path: &Path) -> SerdeResult<()> {
         T::save_yml(self, path)
     }
-}
-
-pub trait Yamlable<T>
-where
-    T: serde::de::DeserializeOwned + serde::Serialize,
-{
-    fn from_yml(path: &Path) -> SerdeResult<T>;
-    fn save_yml(&self, path: &Path) -> SerdeResult<()>;
 }
 
 impl<T> Yamlable<T> for T
