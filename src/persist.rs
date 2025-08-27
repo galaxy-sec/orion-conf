@@ -1,5 +1,5 @@
 pub use derive_getters::Getters;
-use orion_error::{ContextRecord, OperationContext};
+use orion_error::{ContextRecord, OperationContext, ToStructError};
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
 use serde::de::DeserializeOwned;
 pub use serde_derive::{Deserialize, Serialize};
@@ -7,8 +7,41 @@ use std::{fs, path::Path};
 
 use crate::{
     IniAble, JsonAble, JsonStorageExt, StorageLoadEvent, TomlStorageExt, Tomlable, ValueConfable,
-    YamlStorageExt, Yamlable, error::SerdeResult, traits::Configable,
+    YamlStorageExt, Yamlable,
+    error::{SerdeResult, StorageReason},
+    traits::Configable,
 };
+
+/// 通用文件加载函数，处理文件读取和反序列化的重复逻辑
+fn load_from_file<T, F>(path: &Path, operation_name: &str, deserializer: F) -> SerdeResult<T>
+where
+    F: FnOnce(&str) -> Result<T, Box<dyn std::error::Error>>,
+{
+    let mut ctx =
+        OperationContext::want(format!("load object from {operation_name}")).with_auto_log();
+    ctx.record("from path", path);
+    let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
+    let loaded: T = deserializer(file_content.as_str())
+        .map_err(|e| StorageReason::from_conf(e.to_string()).to_err())
+        .with(&ctx)?;
+    ctx.mark_suc();
+    Ok(loaded)
+}
+
+/// 通用文件保存函数，处理序列化和文件写入的重复逻辑
+fn save_to_file<F>(path: &Path, operation_name: &str, serializer: F) -> SerdeResult<()>
+where
+    F: FnOnce() -> Result<String, Box<dyn std::error::Error>>,
+{
+    let mut ctx = OperationContext::want(format!("save {operation_name}")).with_auto_log();
+    ctx.record("from path", path);
+    let data_content = serializer()
+        .map_err(|e| StorageReason::from_conf(e.to_string()).to_err())
+        .with(&ctx)?;
+    fs::write(path, data_content).owe_res().with(&ctx)?;
+    ctx.mark_suc();
+    Ok(())
+}
 
 impl<T> Configable<T> for T
 where
@@ -27,21 +60,14 @@ where
     T: DeserializeOwned + serde::Serialize,
 {
     fn from_ini(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from ini").with_exit_log();
-        ctx.record("from path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        let loaded: T = serde_ini::de::from_str(file_content.as_str())
-            .owe_res()
-            .with(&ctx)?;
-        ctx.mark_suc();
-        Ok(loaded)
+        load_from_file(path, "ini", |content| {
+            serde_ini::de::from_str(content).map_err(Into::into)
+        })
     }
     fn save_ini(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("load conf spec");
-        ctx.record("from path", path);
-        let data_content = serde_ini::ser::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-        Ok(())
+        save_to_file(path, "ini", || {
+            serde_ini::ser::to_string(self).map_err(Into::into)
+        })
     }
 }
 
@@ -50,22 +76,14 @@ where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
     fn from_json(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from json").with_exit_log();
-        ctx.record("from path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        let loaded: T = serde_json::from_str(file_content.as_str())
-            .owe_res()
-            .with(&ctx)?;
-        ctx.mark_suc();
-        Ok(loaded)
+        load_from_file(path, "json", |content| {
+            serde_json::from_str(content).map_err(Into::into)
+        })
     }
     fn save_json(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("save json").with_exit_log();
-        ctx.record("from path", path);
-        let data_content = serde_json::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-        ctx.mark_suc();
-        Ok(())
+        save_to_file(path, "json", || {
+            serde_json::to_string(self).map_err(Into::into)
+        })
     }
 }
 
@@ -74,23 +92,16 @@ where
     T: serde::de::DeserializeOwned + serde::Serialize + StorageLoadEvent,
 {
     fn from_json(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from json").with_exit_log();
-        ctx.record("from path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        let mut loaded: T = serde_json::from_str(file_content.as_str())
-            .owe_res()
-            .with(&ctx)?;
-        ctx.mark_suc();
+        let mut loaded: T = load_from_file(path, "json", |content| {
+            serde_json::from_str(content).map_err(Into::into)
+        })?;
         loaded.loaded_event_do();
         Ok(loaded)
     }
     fn save_json(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("save json").with_exit_log();
-        ctx.record("from path", path);
-        let data_content = serde_json::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-        ctx.mark_suc();
-        Ok(())
+        save_to_file(path, "json", || {
+            serde_json::to_string(self).map_err(Into::into)
+        })
     }
 }
 
@@ -99,20 +110,12 @@ where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
     fn from_toml(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from toml").with_exit_log();
-        ctx.record("from path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        let loaded: T = toml::from_str(file_content.as_str()).owe_res().with(&ctx)?;
-        ctx.mark_suc();
-        Ok(loaded)
+        load_from_file(path, "toml", |content| {
+            toml::from_str(content).map_err(Into::into)
+        })
     }
     fn save_toml(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("save object to toml").with_exit_log();
-        ctx.record("from path", path);
-        let data_content = toml::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-        ctx.mark_suc();
-        Ok(())
+        save_to_file(path, "toml", || toml::to_string(self).map_err(Into::into))
     }
 }
 
@@ -121,22 +124,14 @@ where
     T: serde::de::DeserializeOwned + serde::Serialize + StorageLoadEvent,
 {
     fn from_toml(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from toml").with_exit_log();
-        ctx.record("from path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        let mut loaded: T = toml::from_str(file_content.as_str()).owe_res().with(&ctx)?;
-        ctx.mark_suc();
+        let mut loaded: T = load_from_file(path, "toml", |content| {
+            toml::from_str(content).map_err(Into::into)
+        })?;
         loaded.loaded_event_do();
         Ok(loaded)
     }
     fn save_toml(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("save object to toml").with_exit_log();
-        ctx.record("from path", path);
-        let data_content = toml::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-
-        ctx.mark_suc();
-        Ok(())
+        save_to_file(path, "toml", || toml::to_string(self).map_err(Into::into))
     }
 }
 
@@ -157,23 +152,14 @@ where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
     fn from_yml(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from yml").with_exit_log();
-        ctx.record("path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        //let loaded: T = toml::from_str(file_content.as_str()).owe_res().with(&ctx)?;
-        let loaded: T = serde_yaml::from_str(file_content.as_str())
-            .owe_res()
-            .with(&ctx)?;
-        ctx.mark_suc();
-        Ok(loaded)
+        load_from_file(path, "yml", |content| {
+            serde_yaml::from_str(content).map_err(Into::into)
+        })
     }
     fn save_yml(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("save object fo yml").with_exit_log();
-        ctx.record("path", path);
-        let data_content = serde_yaml::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-        ctx.mark_suc();
-        Ok(())
+        save_to_file(path, "yml", || {
+            serde_yaml::to_string(self).map_err(Into::into)
+        })
     }
 }
 
@@ -182,24 +168,16 @@ where
     T: serde::de::DeserializeOwned + serde::Serialize + StorageLoadEvent,
 {
     fn from_yml(path: &Path) -> SerdeResult<T> {
-        let mut ctx = OperationContext::want("load object from yml").with_exit_log();
-        ctx.record("path", path);
-        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
-        //let loaded: T = toml::from_str(file_content.as_str()).owe_res().with(&ctx)?;
-        let mut loaded: T = serde_yaml::from_str(file_content.as_str())
-            .owe_res()
-            .with(&ctx)?;
+        let mut loaded: T = load_from_file(path, "yml", |content| {
+            serde_yaml::from_str(content).map_err(Into::into)
+        })?;
         loaded.loaded_event_do();
-        ctx.mark_suc();
         Ok(loaded)
     }
     fn save_yml(&self, path: &Path) -> SerdeResult<()> {
-        let mut ctx = OperationContext::want("save object fo yml").with_exit_log();
-        ctx.record("path", path);
-        let data_content = serde_yaml::to_string(self).owe_data().with(&ctx)?;
-        fs::write(path, data_content).owe_res().with(&ctx)?;
-        ctx.mark_suc();
-        Ok(())
+        save_to_file(path, "yml", || {
+            serde_yaml::to_string(self).map_err(Into::into)
+        })
     }
 }
 
