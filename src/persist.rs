@@ -6,7 +6,8 @@ pub use serde_derive::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
 use crate::{
-    IniAble, JsonAble, Tomlable, ValueConfable, Yamlable, error::SerdeResult, traits::Configable,
+    IniAble, JsonAble, JsonStorageExt, StorageLoadEvent, TomlStorageExt, Tomlable, ValueConfable,
+    YamlStorageExt, Yamlable, error::SerdeResult, traits::Configable,
 };
 
 impl<T> Configable<T> for T
@@ -68,6 +69,31 @@ where
     }
 }
 
+impl<T> JsonStorageExt<T> for T
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + StorageLoadEvent,
+{
+    fn from_json(path: &Path) -> SerdeResult<T> {
+        let mut ctx = OperationContext::want("load object from json").with_exit_log();
+        ctx.record("from path", path);
+        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
+        let mut loaded: T = serde_json::from_str(file_content.as_str())
+            .owe_res()
+            .with(&ctx)?;
+        ctx.mark_suc();
+        loaded.loaded_event_do();
+        Ok(loaded)
+    }
+    fn save_json(&self, path: &Path) -> SerdeResult<()> {
+        let mut ctx = OperationContext::want("save json").with_exit_log();
+        ctx.record("from path", path);
+        let data_content = serde_json::to_string(self).owe_data().with(&ctx)?;
+        fs::write(path, data_content).owe_res().with(&ctx)?;
+        ctx.mark_suc();
+        Ok(())
+    }
+}
+
 impl<T> Tomlable<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -85,6 +111,30 @@ where
         ctx.record("from path", path);
         let data_content = toml::to_string(self).owe_data().with(&ctx)?;
         fs::write(path, data_content).owe_res().with(&ctx)?;
+        ctx.mark_suc();
+        Ok(())
+    }
+}
+
+impl<T> TomlStorageExt<T> for T
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + StorageLoadEvent,
+{
+    fn from_toml(path: &Path) -> SerdeResult<T> {
+        let mut ctx = OperationContext::want("load object from toml").with_exit_log();
+        ctx.record("from path", path);
+        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
+        let mut loaded: T = toml::from_str(file_content.as_str()).owe_res().with(&ctx)?;
+        ctx.mark_suc();
+        loaded.loaded_event_do();
+        Ok(loaded)
+    }
+    fn save_toml(&self, path: &Path) -> SerdeResult<()> {
+        let mut ctx = OperationContext::want("save object to toml").with_exit_log();
+        ctx.record("from path", path);
+        let data_content = toml::to_string(self).owe_data().with(&ctx)?;
+        fs::write(path, data_content).owe_res().with(&ctx)?;
+
         ctx.mark_suc();
         Ok(())
     }
@@ -114,6 +164,32 @@ where
         let loaded: T = serde_yaml::from_str(file_content.as_str())
             .owe_res()
             .with(&ctx)?;
+        ctx.mark_suc();
+        Ok(loaded)
+    }
+    fn save_yml(&self, path: &Path) -> SerdeResult<()> {
+        let mut ctx = OperationContext::want("save object fo yml").with_exit_log();
+        ctx.record("path", path);
+        let data_content = serde_yaml::to_string(self).owe_data().with(&ctx)?;
+        fs::write(path, data_content).owe_res().with(&ctx)?;
+        ctx.mark_suc();
+        Ok(())
+    }
+}
+
+impl<T> YamlStorageExt<T> for T
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + StorageLoadEvent,
+{
+    fn from_yml(path: &Path) -> SerdeResult<T> {
+        let mut ctx = OperationContext::want("load object from yml").with_exit_log();
+        ctx.record("path", path);
+        let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
+        //let loaded: T = toml::from_str(file_content.as_str()).owe_res().with(&ctx)?;
+        let mut loaded: T = serde_yaml::from_str(file_content.as_str())
+            .owe_res()
+            .with(&ctx)?;
+        loaded.loaded_event_do();
         ctx.mark_suc();
         Ok(loaded)
     }
