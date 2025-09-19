@@ -32,7 +32,7 @@ fn main() {
     println!("🚀 开始 orion-conf v0.2.0 综合测试");
     println!("{}", "=".repeat(50));
 
-    let config = TestConfig::default();
+    let _config = TestConfig::default();
 
     // 测试 1: 验证特性系统工作
     test_feature_system();

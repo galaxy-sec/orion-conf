@@ -1,13 +1,13 @@
 pub use derive_getters::Getters;
 use orion_error::{ContextRecord, OperationContext, ToStructError};
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
-use serde::de::DeserializeOwned;
 pub use serde_derive::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
 use crate::error::{SerdeResult, StorageReason};
 
 /// 通用文件加载函数，处理文件读取和反序列化的重复逻辑
+#[allow(dead_code)]
 fn load_from_file<T, F>(path: &Path, operation_name: &str, deserializer: F) -> SerdeResult<T>
 where
     F: FnOnce(&str) -> Result<T, Box<dyn std::error::Error>>,
@@ -22,8 +22,8 @@ where
     ctx.mark_suc();
     Ok(loaded)
 }
-
 /// 通用文件保存函数，处理序列化和文件写入的重复逻辑
+#[allow(dead_code)]
 fn save_to_file<F>(path: &Path, operation_name: &str, serializer: F) -> SerdeResult<()>
 where
     F: FnOnce() -> Result<String, Box<dyn std::error::Error>>,
@@ -46,7 +46,7 @@ use crate::traits::IniAble;
 #[cfg(feature = "ini")]
 impl<T> IniAble<T> for T
 where
-    T: DeserializeOwned + serde::Serialize,
+    T: serde::de::DeserializeOwned + serde::Serialize,
 {
     fn from_ini(path: &Path) -> SerdeResult<T> {
         load_from_file(path, "ini", |content| {
@@ -80,10 +80,7 @@ where
     }
 }
 
-#[cfg(feature = "json")]
 // JsonStorageExt trait removed to avoid method conflicts
-
-// JsonStorageExt trait implementation removed to avoid method conflicts
 #[cfg(feature = "toml")]
 use crate::traits::Tomlable;
 
@@ -130,10 +127,14 @@ mod tests {
 
     // Bring trait methods into scope for method resolution in tests
     use crate::traits::Configable;
-    #[cfg(feature = "yaml")] use crate::traits::Yamlable;
-    #[cfg(feature = "json")] use crate::traits::JsonAble;
-    #[cfg(feature = "toml")] use crate::traits::Tomlable;
-    #[cfg(feature = "ini")] use crate::traits::IniAble;
+    #[cfg(feature = "ini")]
+    use crate::traits::IniAble;
+    #[cfg(feature = "json")]
+    use crate::traits::JsonAble;
+    #[cfg(feature = "toml")]
+    use crate::traits::Tomlable;
+    #[cfg(feature = "yaml")]
+    use crate::traits::Yamlable;
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Getters)]
     struct TestConfig {

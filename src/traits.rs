@@ -1,6 +1,5 @@
 pub use derive_getters::Getters;
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, ToStructError, UvsConfFrom};
-use serde::de::DeserializeOwned;
 pub use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -26,7 +25,7 @@ where
 #[cfg(feature = "ini")]
 pub trait IniAble<T>
 where
-    T: DeserializeOwned + serde::Serialize,
+    T: serde::de::DeserializeOwned + serde::Serialize,
 {
     fn from_ini(path: &Path) -> SerdeResult<T>;
     fn save_ini(&self, path: &Path) -> SerdeResult<()>;
@@ -85,7 +84,7 @@ where
 #[cfg(feature = "ini")]
 pub trait IniStorage<T>: IniAble<T>
 where
-    T: DeserializeOwned + serde::Serialize,
+    T: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
@@ -137,7 +136,7 @@ where
 impl<T, U> IniStorage<U> for T
 where
     T: IniAble<U>,
-    U: DeserializeOwned + serde::Serialize,
+    U: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
