@@ -2,7 +2,7 @@
 name = "orion_conf"
 authors = ["wukong<sec-wukong@outlook.com>"]
 edition = "2024"
-version = "0.1.5"
+version = "0.2.0"
 description = "conf storage"
 license = "MIT"
 repository = "https://github.com/galaxy-sec/orion-conf"
@@ -10,20 +10,66 @@ keywords = ["format", "utilities"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-# thiserror = "~2.0"
 orion-error = "~0.5"
-#orion-error = { path = "../orion-error" }
-#orion-error = { git = "https://github.com/galaxy-sec/orion-error.git", tag = "v0.5.1" }
 derive_more = { version = "2.0", features = ["full"] }
 derive-getters = "~0.5"
-toml = "~0.9"
 serde = "~1.0"
-serde_yaml = "~0.9"
-serde_ini = "~0.2.0"
-serde_json = "~1.0"
-thiserror = "~2.0"
 serde_derive = "~1.0"
-chrono = { version = "~0.4", features = ["serde"] }
+thiserror = "~2.0"
+
+# 可选格式依赖
+toml = { version = "~0.9", optional = true }
+serde_yaml = { version = "~0.9", optional = true }
+serde_ini = { version = "~0.2.0", optional = true }
+serde_json = { version = "~1.0", optional = true }
+
+[features]
+# 基本特性（无格式依赖）
+core = []
+
+# 各格式特性
+toml = ["dep:toml"]
+yaml = ["dep:serde_yaml"]
+ini = ["dep:serde_ini"]
+json = ["dep:serde_json"]
+
+# 常用组合特性
+formats = ["toml", "yaml", "json", "ini"]
+default-toml = ["toml"]
+default-yaml = ["yaml"]
+formats-minimal = ["toml", "json"]
+formats-web = ["json", "yaml"]
+
+# 全功能特性（包含所有格式）
+full = ["toml", "yaml", "json", "ini"]
+
+# 默认特性（不启用任何格式，需要用户显式选择）
+default = []
 
 [dev-dependencies]
 tempfile = "3.8"
+
+# Ensure examples only build when required features are enabled to avoid
+# `cargo test` failures in the default (no-feature) configuration.
+[[example]]
+name = "json_feature_test"
+path = "examples/json_feature_test.rs"
+required-features = ["json"]
+
+[[example]]
+name = "feature_priority_test"
+path = "examples/feature_priority_test.rs"
+required-features = ["yaml", "json"]
+
+[[example]]
+name = "comprehensive_test"
+path = "examples/comprehensive_test.rs"
+required-features = ["yaml", "json", "toml", "ini"]
+
+[[example]]
+name = "no_feature_error_test"
+path = "examples/no_feature_error_test.rs"
+
+[[example]]
+name = "no_feature_test"
+path = "examples/no_feature_test.rs"

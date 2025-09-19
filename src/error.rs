@@ -11,6 +11,8 @@ pub enum StorageReason {
     Brief(String),
     #[error("{0}")]
     Uvs(UvsReason),
+    #[error("no format feature enabled - please enable at least one of: yaml, toml, json, ini")]
+    NoFormatEnabled,
 }
 pub type SerdeReason = StorageReason;
 
@@ -19,6 +21,7 @@ impl ErrorCode for StorageReason {
         match self {
             StorageReason::Brief(_) => 500,
             StorageReason::Uvs(r) => r.error_code(),
+            StorageReason::NoFormatEnabled => 501,
         }
     }
 }

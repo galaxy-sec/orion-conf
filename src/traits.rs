@@ -1,17 +1,18 @@
 pub use derive_getters::Getters;
-pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
+pub use orion_error::{ErrorOwe, ErrorWith, StructError, ToStructError, UvsConfFrom};
 use serde::de::DeserializeOwned;
 pub use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::error::SerdeResult;
 
-// 原有 trait 定义保持不变以确保向后兼容性
+// 核心持久化 trait - 不依赖任何特定格式
 pub trait Persistable<T> {
     fn save_to(&self, path: &Path, name: Option<String>) -> SerdeResult<()>;
     fn load_from(path: &Path) -> SerdeResult<T>;
 }
 
+// 通用配置 trait - 默认行为基于可用特性
 pub trait Configable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -20,6 +21,9 @@ where
     fn save_conf(&self, path: &Path) -> SerdeResult<()>;
 }
 
+// 格式特定的 trait - 每个都使用条件编译
+
+#[cfg(feature = "ini")]
 pub trait IniAble<T>
 where
     T: DeserializeOwned + serde::Serialize,
@@ -28,6 +32,7 @@ where
     fn save_ini(&self, path: &Path) -> SerdeResult<()>;
 }
 
+#[cfg(feature = "json")]
 pub trait JsonAble<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -36,6 +41,7 @@ where
     fn save_json(&self, path: &Path) -> SerdeResult<()>;
 }
 
+#[cfg(feature = "toml")]
 pub trait Tomlable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -44,6 +50,7 @@ where
     fn save_toml(&self, path: &Path) -> SerdeResult<()>;
 }
 
+#[cfg(feature = "toml")]
 pub trait ValueConfable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -52,6 +59,7 @@ where
     fn save_valconf(&self, path: &Path) -> SerdeResult<()>;
 }
 
+#[cfg(feature = "yaml")]
 pub trait Yamlable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -60,56 +68,62 @@ where
     fn save_yml(&self, path: &Path) -> SerdeResult<()>;
 }
 
-// 新的改进命名 trait - Storage 模式，强调持久化存储的完整功能
-/// 文件持久化存储 trait，包含读取和写入操作，继承自 Persistable，保持方法一致
+// Storage trait 别名 - 继承自对应的格式 trait
+
 pub trait FileStorage<T>: Persistable<T> {}
 
 pub trait StorageLoadEvent {
     fn loaded_event_do(&mut self) {}
 }
-/// 配置存储 trait，用于处理配置文件的读取和写入，继承自 Configable，保持方法一致
+
 pub trait ConfigStorage<T>: Configable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
-/// INI 格式存储 trait，提供 INI 文件的持久化存储功能
+#[cfg(feature = "ini")]
 pub trait IniStorage<T>: IniAble<T>
 where
     T: DeserializeOwned + serde::Serialize,
 {
 }
 
-/// JSON 格式存储 trait，提供 JSON 文件的持久化存储功能
+#[cfg(feature = "json")]
 pub trait JsonStorage<T>: JsonAble<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
-/// TOML 格式存储 trait，提供 TOML 文件的持久化存储功能
+#[cfg(feature = "toml")]
 pub trait TomlStorage<T>: Tomlable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
-/// 值配置存储 trait，提供值配置的持久化存储功能
+#[cfg(feature = "toml")]
 pub trait ValueStorage<T>: ValueConfable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
-/// YAML 格式存储 trait，提供 YAML 文件的持久化存储功能
+#[cfg(feature = "yaml")]
 pub trait YamlStorage<T>: Yamlable<T>
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
 }
 
-// 为所有原有 trait 实现新的 Storage 命名 trait，确保无缝兼容性
+// 扩展 trait - 包含加载事件处理
+
+// StorageExt traits removed to avoid method conflicts with base traits
+// Use the base traits (JsonAble, Tomlable, Yamlable) for basic functionality
+
+// 为所有原有 trait 实现新的 Storage 命名 trait，确保兼容性
+
 impl<T, U> FileStorage<U> for T where T: Persistable<U> {}
 
 impl<T, U> ConfigStorage<U> for T
@@ -119,6 +133,7 @@ where
 {
 }
 
+#[cfg(feature = "ini")]
 impl<T, U> IniStorage<U> for T
 where
     T: IniAble<U>,
@@ -126,6 +141,7 @@ where
 {
 }
 
+#[cfg(feature = "json")]
 impl<T, U> JsonStorage<U> for T
 where
     T: JsonAble<U>,
@@ -133,6 +149,7 @@ where
 {
 }
 
+#[cfg(feature = "toml")]
 impl<T, U> TomlStorage<U> for T
 where
     T: Tomlable<U>,
@@ -140,6 +157,7 @@ where
 {
 }
 
+#[cfg(feature = "toml")]
 impl<T, U> ValueStorage<U> for T
 where
     T: ValueConfable<U>,
@@ -147,6 +165,7 @@ where
 {
 }
 
+#[cfg(feature = "yaml")]
 impl<T, U> YamlStorage<U> for T
 where
     T: Yamlable<U>,
@@ -154,29 +173,95 @@ where
 {
 }
 
-/// JSON 格式存储 trait，提供 JSON 文件的持久化存储功能
-pub trait JsonStorageExt<T>: JsonAble<T>
+// 默认实现选择逻辑 - 基于特性优先级
+
+impl<T> Configable<T> for T
 where
-    T: DeserializeOwned + serde::Serialize + StorageLoadEvent,
+    T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_json(path: &Path) -> SerdeResult<T>;
-    fn save_json(&self, path: &Path) -> SerdeResult<()>;
+    #[cfg(feature = "yaml")]
+    fn from_conf(path: &Path) -> SerdeResult<T> {
+        T::from_yml(path)
+    }
+
+    #[cfg(all(feature = "toml", not(feature = "yaml")))]
+    fn from_conf(path: &Path) -> SerdeResult<T> {
+        T::from_toml(path)
+    }
+
+    #[cfg(all(feature = "json", not(any(feature = "yaml", feature = "toml"))))]
+    fn from_conf(path: &Path) -> SerdeResult<T> {
+        T::from_json(path)
+    }
+
+    #[cfg(all(
+        feature = "ini",
+        not(any(feature = "yaml", feature = "toml", feature = "json"))
+    ))]
+    fn from_conf(path: &Path) -> SerdeResult<T> {
+        T::from_ini(path)
+    }
+
+    #[cfg(not(any(feature = "yaml", feature = "toml", feature = "json", feature = "ini")))]
+    fn from_conf(_path: &Path) -> SerdeResult<T> {
+        use crate::error::StorageReason;
+        Err(StorageReason::NoFormatEnabled.to_err())
+    }
+
+    #[cfg(feature = "yaml")]
+    fn save_conf(&self, path: &Path) -> SerdeResult<()> {
+        self.save_yml(path)
+    }
+
+    #[cfg(all(feature = "toml", not(feature = "yaml")))]
+    fn save_conf(&self, path: &Path) -> SerdeResult<()> {
+        self.save_toml(path)
+    }
+
+    #[cfg(all(feature = "json", not(any(feature = "yaml", feature = "toml"))))]
+    fn save_conf(&self, path: &Path) -> SerdeResult<()> {
+        self.save_json(path)
+    }
+
+    #[cfg(all(
+        feature = "ini",
+        not(any(feature = "yaml", feature = "toml", feature = "json"))
+    ))]
+    fn save_conf(&self, path: &Path) -> SerdeResult<()> {
+        self.save_ini(path)
+    }
+
+    #[cfg(not(any(feature = "yaml", feature = "toml", feature = "json", feature = "ini")))]
+    fn save_conf(&self, _path: &Path) -> SerdeResult<()> {
+        use crate::error::StorageReason;
+        Err(StorageReason::NoFormatEnabled.to_err())
+    }
 }
 
-/// TOML 格式存储 trait，提供 TOML 文件的持久化存储功能
-pub trait TomlStorageExt<T>: Tomlable<T>
-where
-    T: DeserializeOwned + serde::Serialize + StorageLoadEvent,
-{
-    fn from_toml(path: &Path) -> SerdeResult<T>;
-    fn save_toml(&self, path: &Path) -> SerdeResult<()>;
-}
+// ValueConfable 的默认实现 - 委托给 YAML 或 TOML
 
-/// YAML 格式存储 trait，提供 YAML 文件的持久化存储功能
-pub trait YamlStorageExt<T>
+#[cfg(feature = "toml")]
+impl<T> ValueConfable<T> for T
 where
-    T: DeserializeOwned + serde::Serialize + StorageLoadEvent,
+    T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_yml(path: &Path) -> SerdeResult<T>;
-    fn save_yml(&self, path: &Path) -> SerdeResult<()>;
+    #[cfg(feature = "yaml")]
+    fn from_valconf(path: &Path) -> SerdeResult<T> {
+        T::from_yml(path)
+    }
+
+    #[cfg(not(feature = "yaml"))]
+    fn from_valconf(path: &Path) -> SerdeResult<T> {
+        T::from_toml(path)
+    }
+
+    #[cfg(feature = "yaml")]
+    fn save_valconf(&self, path: &Path) -> SerdeResult<()> {
+        self.save_yml(path)
+    }
+
+    #[cfg(not(feature = "yaml"))]
+    fn save_valconf(&self, path: &Path) -> SerdeResult<()> {
+        self.save_toml(path)
+    }
 }
