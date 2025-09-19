@@ -144,9 +144,9 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "orion-error"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd756cd69dcbd7fe76af86e9d3e775cc767876d6203ea4c8a2afa06d0ca34ba3"
+checksum = "ac3c3c07d39f70ce6fdcdc5f5eff8494454af616bbf7eeed44e985236ea4d5bf"
 dependencies = [
  "derive-getters",
  "derive_more",
