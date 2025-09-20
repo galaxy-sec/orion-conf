@@ -2,7 +2,7 @@
 //!
 //! 这个测试验证在没有启用任何格式特性时，库会正确返回错误
 
-use orion_conf::Configable;
+use orion_conf::ConfigIO;
 use std::path::Path;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
@@ -42,7 +42,7 @@ fn main() {
 
     // 测试加载 - 应该失败
     println!("\n=== Testing Load Operation ===");
-    match TestConfig::from_conf(path) {
+    match TestConfig::load_conf(path) {
         Ok(_) => {
             println!("❌ Unexpected success: load should have failed without features");
         }

@@ -6,7 +6,7 @@
 //! 3. 多特性组合的优先级逻辑
 //! 4. 所有格式的完整功能
 
-use orion_conf::*;
+use orion_conf::*; // imports ConfigIO/JsonIO/TomlIO/YamlIO traits
 use std::path::Path;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
@@ -29,7 +29,7 @@ impl Default for TestConfig {
 }
 
 fn main() {
-    println!("🚀 开始 orion-conf v0.2.0 综合测试");
+    println!("🚀 开始 orion-conf v0.3.0 综合测试");
     println!("{}", "=".repeat(50));
 
     let _config = TestConfig::default();
@@ -43,7 +43,7 @@ fn main() {
     // 测试 3: 验证所有启用格式的功能
     test_all_formats();
 
-    // 测试 4: 验证 Configable 默认行为
+    // 测试 4: 验证 ConfigIO 默认行为
     test_configable_default();
 
     println!("\n✅ 所有测试完成！orion-conf 特性系统工作正常！");
@@ -82,7 +82,7 @@ fn test_priority_logic() {
     #[cfg(feature = "yaml")]
     {
         println!("  🔧 测试 YAML 优先级（应该最高）");
-        if let Err(e) = Configable::save_conf(&config, test_path) {
+        if let Err(e) = ConfigIO::save_conf(&config, test_path) {
             println!("    ❌ 保存失败: {}", e);
             return;
         }
@@ -142,8 +142,8 @@ fn test_all_formats() {
         let path = Path::new("test_config.yaml");
         println!("  🔧 测试 YAML 格式");
 
-        match config.save_yml(path) {
-            Ok(()) => match TestConfig::from_yml(path) {
+        match config.save_yaml(path) {
+            Ok(()) => match TestConfig::load_yaml(path) {
                 Ok(loaded) => {
                     if loaded == config {
                         println!("    ✅ YAML 格式正常");
@@ -166,7 +166,7 @@ fn test_all_formats() {
         println!("  🔧 测试 JSON 格式");
 
         match config.save_json(path) {
-            Ok(()) => match TestConfig::from_json(path) {
+            Ok(()) => match TestConfig::load_json(path) {
                 Ok(loaded) => {
                     if loaded == config {
                         println!("    ✅ JSON 格式正常");
@@ -189,7 +189,7 @@ fn test_all_formats() {
         println!("  🔧 测试 TOML 格式");
 
         match config.save_toml(path) {
-            Ok(()) => match TestConfig::from_toml(path) {
+            Ok(()) => match TestConfig::load_toml(path) {
                 Ok(loaded) => {
                     if loaded == config {
                         println!("    ✅ TOML 格式正常");
@@ -212,7 +212,7 @@ fn test_all_formats() {
         println!("  🔧 测试 INI 格式");
 
         match config.save_ini(path) {
-            Ok(()) => match TestConfig::from_ini(path) {
+            Ok(()) => match TestConfig::load_ini(path) {
                 Ok(loaded) => {
                     if loaded == config {
                         println!("    ✅ INI 格式正常");
@@ -230,7 +230,7 @@ fn test_all_formats() {
 }
 
 fn test_configable_default() {
-    println!("\n🎛️  测试 4: Configable 默认行为");
+    println!("\n🎛️  测试 4: ConfigIO 默认行为");
 
     let config = TestConfig::default();
     let path = Path::new("configable_test.conf");
@@ -238,18 +238,18 @@ fn test_configable_default() {
     // 测试保存
     match config.save_conf(path) {
         Ok(()) => {
-            println!("  ✅ Configable 保存成功");
+            println!("  ✅ ConfigIO 保存成功");
 
             // 测试加载
-            match TestConfig::from_conf(path) {
+            match TestConfig::load_conf(path) {
                 Ok(loaded) => {
                     if loaded == config {
-                        println!("  ✅ Configable 加载成功，数据一致");
+                        println!("  ✅ ConfigIO 加载成功，数据一致");
                     } else {
-                        println!("  ❌ Configable 数据不一致");
+                        println!("  ❌ ConfigIO 数据不一致");
                     }
                 }
-                Err(e) => println!("  ❌ Configable 加载失败: {}", e),
+                Err(e) => println!("  ❌ ConfigIO 加载失败: {}", e),
             }
 
             // 检查文件格式
@@ -257,23 +257,23 @@ fn test_configable_default() {
 
             #[cfg(feature = "yaml")]
             if content.contains("name: test_app") {
-                println!("  ✅ Configable 正确使用 YAML 格式");
+                println!("  ✅ ConfigIO 正确使用 YAML 格式");
             } else {
-                println!("  ⚠️  Configable 未使用预期的 YAML 格式");
+                println!("  ⚠️  ConfigIO 未使用预期的 YAML 格式");
             }
 
             #[cfg(all(feature = "toml", not(feature = "yaml")))]
             if content.contains("name = \"test_app\"") {
-                println!("  ✅ Configable 正确使用 TOML 格式");
+                println!("  ✅ ConfigIO 正确使用 TOML 格式");
             } else {
-                println!("  ⚠️  Configable 未使用预期的 TOML 格式");
+                println!("  ⚠️  ConfigIO 未使用预期的 TOML 格式");
             }
 
             #[cfg(all(feature = "json", not(any(feature = "yaml", feature = "toml"))))]
             if content.contains("\"name\": \"test_app\"") {
-                println!("  ✅ Configable 正确使用 JSON 格式");
+                println!("  ✅ ConfigIO 正确使用 JSON 格式");
             } else {
-                println!("  ⚠️  Configable 未使用预期的 JSON 格式");
+                println!("  ⚠️  ConfigIO 未使用预期的 JSON 格式");
             }
         }
         Err(e) => {
@@ -284,13 +284,13 @@ fn test_configable_default() {
                 feature = "ini"
             )))]
             if e.to_string().contains("no format feature enabled") {
-                println!("  ✅ Configable 正确返回特性未启用错误");
+                println!("  ✅ ConfigIO 正确返回特性未启用错误");
             } else {
-                println!("  ❌ Configable 返回意外错误: {}", e);
+                println!("  ❌ ConfigIO 返回意外错误: {}", e);
             }
 
             #[cfg(any(feature = "yaml", feature = "json", feature = "toml", feature = "ini"))]
-            println!("  ❌ Configable 保存失败（特性已启用）: {}", e);
+            println!("  ❌ ConfigIO 保存失败（特性已启用）: {}", e);
         }
     }
 

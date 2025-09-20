@@ -4,11 +4,11 @@ pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
 pub use serde_derive::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
-use crate::error::{SerdeResult, StorageReason};
+use crate::error::{ConfIOReason, OrionConfResult};
 
 /// 通用文件加载函数，处理文件读取和反序列化的重复逻辑
 #[allow(dead_code)]
-fn load_from_file<T, F>(path: &Path, operation_name: &str, deserializer: F) -> SerdeResult<T>
+fn load_from_file<T, F>(path: &Path, operation_name: &str, deserializer: F) -> OrionConfResult<T>
 where
     F: FnOnce(&str) -> Result<T, Box<dyn std::error::Error>>,
 {
@@ -17,43 +17,43 @@ where
     ctx.record("from path", path);
     let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
     let loaded: T = deserializer(file_content.as_str())
-        .map_err(|e| StorageReason::from_conf(e.to_string()).to_err())
+        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
         .with(&ctx)?;
     ctx.mark_suc();
     Ok(loaded)
 }
 /// 通用文件保存函数，处理序列化和文件写入的重复逻辑
 #[allow(dead_code)]
-fn save_to_file<F>(path: &Path, operation_name: &str, serializer: F) -> SerdeResult<()>
+fn save_to_file<F>(path: &Path, operation_name: &str, serializer: F) -> OrionConfResult<()>
 where
     F: FnOnce() -> Result<String, Box<dyn std::error::Error>>,
 {
     let mut ctx = OperationContext::want(format!("save {operation_name}")).with_auto_log();
     ctx.record("from path", path);
     let data_content = serializer()
-        .map_err(|e| StorageReason::from_conf(e.to_string()).to_err())
+        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
         .with(&ctx)?;
     fs::write(path, data_content).owe_res().with(&ctx)?;
     ctx.mark_suc();
     Ok(())
 }
 
-// Configable trait 的默认实现已在 traits.rs 中处理
+// ConfigIO trait 的默认实现已在 traits.rs 中处理
 
 #[cfg(feature = "ini")]
-use crate::traits::IniAble;
+use crate::traits::IniIO;
 
 #[cfg(feature = "ini")]
-impl<T> IniAble<T> for T
+impl<T> IniIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_ini(path: &Path) -> SerdeResult<T> {
+    fn from_ini(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "ini", |content| {
             serde_ini::de::from_str(content).map_err(Into::into)
         })
     }
-    fn save_ini(&self, path: &Path) -> SerdeResult<()> {
+    fn save_ini(&self, path: &Path) -> OrionConfResult<()> {
         save_to_file(path, "ini", || {
             serde_ini::ser::to_string(self).map_err(Into::into)
         })
@@ -61,19 +61,19 @@ where
 }
 
 #[cfg(feature = "json")]
-use crate::traits::JsonAble;
+use crate::traits::JsonIO;
 
 #[cfg(feature = "json")]
-impl<T> JsonAble<T> for T
+impl<T> JsonIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_json(path: &Path) -> SerdeResult<T> {
+    fn from_json(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "json", |content| {
             serde_json::from_str(content).map_err(Into::into)
         })
     }
-    fn save_json(&self, path: &Path) -> SerdeResult<()> {
+    fn save_json(&self, path: &Path) -> OrionConfResult<()> {
         save_to_file(path, "json", || {
             serde_json::to_string(self).map_err(Into::into)
         })
@@ -82,37 +82,37 @@ where
 
 // JsonStorageExt trait removed to avoid method conflicts
 #[cfg(feature = "toml")]
-use crate::traits::Tomlable;
+use crate::traits::TomlIO;
 
 #[cfg(feature = "toml")]
-impl<T> Tomlable<T> for T
+impl<T> TomlIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_toml(path: &Path) -> SerdeResult<T> {
+    fn from_toml(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "toml", |content| {
             toml::from_str(content).map_err(Into::into)
         })
     }
-    fn save_toml(&self, path: &Path) -> SerdeResult<()> {
+    fn save_toml(&self, path: &Path) -> OrionConfResult<()> {
         save_to_file(path, "toml", || toml::to_string(self).map_err(Into::into))
     }
 }
 #[cfg(feature = "yaml")]
-use crate::traits::Yamlable;
+use crate::traits::YamlIO;
 
 #[cfg(feature = "yaml")]
-impl<T> Yamlable<T> for T
+impl<T> YamlIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_yml(path: &Path) -> SerdeResult<T> {
-        load_from_file(path, "yml", |content| {
+    fn from_yaml(path: &Path) -> OrionConfResult<T> {
+        load_from_file(path, "yaml", |content| {
             serde_yaml::from_str(content).map_err(Into::into)
         })
     }
-    fn save_yml(&self, path: &Path) -> SerdeResult<()> {
-        save_to_file(path, "yml", || {
+    fn save_yaml(&self, path: &Path) -> OrionConfResult<()> {
+        save_to_file(path, "yaml", || {
             serde_yaml::to_string(self).map_err(Into::into)
         })
     }
@@ -126,15 +126,15 @@ mod tests {
     use tempfile::NamedTempFile;
 
     // Bring trait methods into scope for method resolution in tests
-    use crate::traits::Configable;
+    use crate::traits::ConfigIO;
     #[cfg(feature = "ini")]
-    use crate::traits::IniAble;
+    use crate::traits::IniIO;
     #[cfg(feature = "json")]
-    use crate::traits::JsonAble;
+    use crate::traits::JsonIO;
     #[cfg(feature = "toml")]
-    use crate::traits::Tomlable;
+    use crate::traits::TomlIO;
     #[cfg(feature = "yaml")]
-    use crate::traits::Yamlable;
+    use crate::traits::YamlIO;
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Getters)]
     struct TestConfig {
@@ -189,7 +189,7 @@ mod tests {
         config.save_conf(path).expect("Failed to save config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_conf(path).expect("Failed to load config");
+        let loaded_config = TestConfig::load_conf(path).expect("Failed to load config");
 
         // 验证数据一致性（注意：StorageLoadEvent 会修改 version）
         assert_eq!(config.name, loaded_config.name);
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn test_configable_file_not_found() {
         let non_existent_path = Path::new("non_existent_config.yml");
-        let result = TestConfig::from_conf(non_existent_path);
+        let result = TestConfig::load_conf(non_existent_path);
         assert!(result.is_err());
     }
 
@@ -217,7 +217,7 @@ mod tests {
         config.save_ini(path).expect("Failed to save INI config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_ini(path).expect("Failed to load INI config");
+        let loaded_config = TestConfig::load_ini(path).expect("Failed to load INI config");
 
         // 验证数据一致性
         assert_eq!(config, loaded_config);
@@ -236,7 +236,7 @@ mod tests {
     this_is_not_valid_ini_data
     "#;
         let temp_file = create_test_file_with_content(invalid_ini_content, "ini");
-        let result = TestConfig::from_ini(temp_file.path());
+        let result = TestConfig::load_ini(temp_file.path());
         assert!(result.is_err());
     }
 
@@ -252,7 +252,7 @@ mod tests {
         config.save_json(path).expect("Failed to save JSON config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_json(path).expect("Failed to load JSON config");
+        let loaded_config = TestConfig::load_json(path).expect("Failed to load JSON config");
 
         // 验证数据一致性
         assert_eq!(config, loaded_config);
@@ -269,7 +269,7 @@ mod tests {
     fn test_json_able_malformed_json() {
         let malformed_json = r#"{"name": "test", "version": "invalid_number"}"#;
         let temp_file = create_test_file_with_content(malformed_json, "json");
-        let result = TestConfig::from_json(temp_file.path());
+        let result = TestConfig::load_json(temp_file.path());
         assert!(result.is_err());
     }
 
@@ -285,7 +285,7 @@ mod tests {
         config.save_toml(path).expect("Failed to save TOML config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_toml(path).expect("Failed to load TOML config");
+        let loaded_config = TestConfig::load_toml(path).expect("Failed to load TOML config");
 
         // 验证数据一致性
         assert_eq!(config, loaded_config);
@@ -305,7 +305,7 @@ mod tests {
     version = "invalid_number"
     "#;
         let temp_file = create_test_file_with_content(invalid_toml, "toml");
-        let result = TestConfig::from_toml(temp_file.path());
+        let result = TestConfig::load_toml(temp_file.path());
         assert!(result.is_err());
     }
 
@@ -318,10 +318,10 @@ mod tests {
         let path = temp_file.path();
 
         // 测试保存
-        config.save_yml(path).expect("Failed to save YAML config");
+        config.save_yaml(path).expect("Failed to save YAML config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_yml(path).expect("Failed to load YAML config");
+        let loaded_config = TestConfig::load_yaml(path).expect("Failed to load YAML config");
 
         // 验证数据一致性
         assert_eq!(config, loaded_config);
@@ -343,7 +343,7 @@ mod tests {
       retry_count: "invalid_retry"
     "#;
         let temp_file = create_test_file_with_content(malformed_yaml, "yml");
-        let result = TestConfig::from_yml(temp_file.path());
+        let result = TestConfig::load_yaml(temp_file.path());
         assert!(result.is_err());
     }
 
@@ -359,7 +359,7 @@ mod tests {
         config.save_json(path).expect("Failed to save JSON config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_json(path).expect("Failed to load JSON config");
+        let loaded_config = TestConfig::load_json(path).expect("Failed to load JSON config");
 
         // 验证数据一致性
         assert_eq!(loaded_config, config);
@@ -377,7 +377,7 @@ mod tests {
         config.save_toml(path).expect("Failed to save TOML config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_toml(path).expect("Failed to load TOML config");
+        let loaded_config = TestConfig::load_toml(path).expect("Failed to load TOML config");
 
         // 验证数据一致性
         assert_eq!(loaded_config, config);
@@ -392,10 +392,10 @@ mod tests {
         let path = temp_file.path();
 
         // 测试保存
-        config.save_yml(path).expect("Failed to save YAML config");
+        config.save_yaml(path).expect("Failed to save YAML config");
 
         // 测试加载
-        let loaded_config = TestConfig::from_yml(path).expect("Failed to load YAML config");
+        let loaded_config = TestConfig::load_yaml(path).expect("Failed to load YAML config");
 
         // 验证数据一致性
         assert_eq!(loaded_config, config);

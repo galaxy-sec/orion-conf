@@ -1,4 +1,4 @@
-use orion_conf::{Configable, JsonAble};
+use orion_conf::{ConfigIO, JsonIO};
 use std::path::Path;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq)]
@@ -25,7 +25,7 @@ fn main() {
     }
 
     // 测试 JSON 格式加载
-    match TestConfig::from_json(path) {
+    match TestConfig::load_json(path) {
         Ok(loaded_config) => {
             println!("Successfully loaded JSON config: {:?}", loaded_config);
             assert_eq!(config, loaded_config);
@@ -34,17 +34,17 @@ fn main() {
         Err(e) => println!("Failed to load JSON config: {}", e),
     }
 
-    // 测试 Configable 默认行为（应该使用 JSON，因为只启用了 json 特性）
-    match TestConfig::from_conf(path) {
+    // 测试 ConfigIO 默认行为（应该使用 JSON，因为只启用了 json 特性）
+    match TestConfig::load_conf(path) {
         Ok(loaded_config) => {
             println!(
-                "Successfully loaded config using Configable: {:?}",
+                "Successfully loaded config using ConfigIO: {:?}",
                 loaded_config
             );
             assert_eq!(config, loaded_config);
-            println!("Configable with JSON feature test passed!");
+            println!("ConfigIO with JSON feature test passed!");
         }
-        Err(e) => println!("Failed to load config using Configable: {}", e),
+        Err(e) => println!("Failed to load config using ConfigIO: {}", e),
     }
 
     // 清理测试文件

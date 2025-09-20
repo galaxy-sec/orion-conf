@@ -1,32 +1,59 @@
 pub use derive_getters::Getters;
-use derive_more::From;
 use orion_error::{ErrorCode, UvsReason};
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
 pub use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Clone, Debug, Serialize, PartialEq, Error, From)]
-pub enum StorageReason {
-    #[error("brief {0}")]
-    Brief(String),
+#[derive(Clone, Debug, Serialize, PartialEq, Error)]
+pub enum ConfIOReason {
+    // Preferred variant for arbitrary messages
+    #[error("{0}")]
+    Other(String),
+
     #[error("{0}")]
     Uvs(UvsReason),
     #[error("no format feature enabled - please enable at least one of: yaml, toml, json, ini")]
     NoFormatEnabled,
 }
-pub type SerdeReason = StorageReason;
 
-impl ErrorCode for StorageReason {
+// Backward-compat deprecated alias
+#[deprecated(since = "0.3.0", note = "Use ConfIOReason")]
+pub use ConfIOReason as StorageReason;
+
+// Keep legacy alias for compatibility
+pub type SerdeReason = ConfIOReason;
+
+impl ErrorCode for ConfIOReason {
     fn error_code(&self) -> i32 {
         match self {
-            StorageReason::Brief(_) => 500,
-            StorageReason::Uvs(r) => r.error_code(),
-            StorageReason::NoFormatEnabled => 501,
+            ConfIOReason::Other(_) => 500,
+            ConfIOReason::Uvs(r) => r.error_code(),
+            ConfIOReason::NoFormatEnabled => 501,
         }
     }
 }
-pub type SerdeResult<T> = Result<T, StructError<StorageReason>>;
-pub type SerdeError = StructError<StorageReason>;
 
-pub type StorageResult<T> = Result<T, StructError<StorageReason>>;
-pub type StorageError = StructError<StorageReason>;
+impl From<String> for ConfIOReason {
+    fn from(s: String) -> Self {
+        ConfIOReason::Other(s)
+    }
+}
+
+impl From<UvsReason> for ConfIOReason {
+    fn from(r: UvsReason) -> Self {
+        ConfIOReason::Uvs(r)
+    }
+}
+
+#[deprecated(since = "0.3.0", note = "Use OrionConfResult<T>")]
+pub type SerdeResult<T> = Result<T, StructError<ConfIOReason>>;
+#[deprecated(since = "0.3.0", note = "Use OrionConfError")]
+pub type SerdeError = StructError<ConfIOReason>;
+
+pub type OrionConfResult<T> = Result<T, StructError<ConfIOReason>>;
+pub type OrionConfError = StructError<ConfIOReason>;
+
+#[deprecated(since = "0.3.0", note = "Use OrionConfResult<T>")]
+pub type StorageResult<T> = Result<T, StructError<ConfIOReason>>;
+#[deprecated(since = "0.3.0", note = "Use OrionConfError")]
+pub type StorageError = StructError<ConfIOReason>;
