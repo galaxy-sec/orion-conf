@@ -16,10 +16,6 @@ pub enum ConfIOReason {
     NoFormatEnabled,
 }
 
-// Backward-compat deprecated alias
-#[deprecated(since = "0.3.0", note = "Use ConfIOReason")]
-pub use ConfIOReason as StorageReason;
-
 // Keep legacy alias for compatibility
 pub type SerdeReason = ConfIOReason;
 
@@ -45,15 +41,6 @@ impl From<UvsReason> for ConfIOReason {
     }
 }
 
-#[deprecated(since = "0.3.0", note = "Use OrionConfResult<T>")]
-pub type SerdeResult<T> = Result<T, StructError<ConfIOReason>>;
-#[deprecated(since = "0.3.0", note = "Use OrionConfError")]
-pub type SerdeError = StructError<ConfIOReason>;
-
 pub type OrionConfResult<T> = Result<T, StructError<ConfIOReason>>;
 pub type OrionConfError = StructError<ConfIOReason>;
 
-#[deprecated(since = "0.3.0", note = "Use OrionConfResult<T>")]
-pub type StorageResult<T> = Result<T, StructError<ConfIOReason>>;
-#[deprecated(since = "0.3.0", note = "Use OrionConfError")]
-pub type StorageError = StructError<ConfIOReason>;

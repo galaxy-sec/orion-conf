@@ -1,9 +1,10 @@
 pub use derive_getters::Getters;
 use orion_error::{ContextRecord, OperationContext, ToStructError};
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
+#[allow(unused_imports)]
+use orion_variate::{EnvDict, EnvEvaluable};
 pub use serde_derive::{Deserialize, Serialize};
 use std::{fs, path::Path};
-use orion_variate::{EnvDict, EnvEvaluable};
 
 use crate::error::{ConfIOReason, OrionConfResult};
 
@@ -52,7 +53,7 @@ impl<T> IniIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_ini(path: &Path) -> OrionConfResult<T> {
+    fn load_ini(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "ini", |content| {
             serde_ini::de::from_str(content).map_err(Into::into)
         })
@@ -88,7 +89,7 @@ impl<T> JsonIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_json(path: &Path) -> OrionConfResult<T> {
+    fn load_json(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "json", |content| {
             serde_json::from_str(content).map_err(Into::into)
         })
@@ -125,7 +126,7 @@ impl<T> TomlIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_toml(path: &Path) -> OrionConfResult<T> {
+    fn load_toml(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "toml", |content| {
             toml::from_str(content).map_err(Into::into)
         })
@@ -159,7 +160,7 @@ impl<T> YamlIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
 {
-    fn from_yaml(path: &Path) -> OrionConfResult<T> {
+    fn load_yaml(path: &Path) -> OrionConfResult<T> {
         load_from_file(path, "yaml", |content| {
             serde_yaml::from_str(content).map_err(Into::into)
         })
@@ -492,8 +493,8 @@ backoff_ms = 2000
         env_dict.insert("ENABLED", ValueType::from("false"));
 
         // 测试加载
-        let loaded_config =
-            TestConfig::env_load_ini(temp_file.path(), &env_dict).expect("Failed to load INI with env vars");
+        let loaded_config = TestConfig::env_load_ini(temp_file.path(), &env_dict)
+            .expect("Failed to load INI with env vars");
 
         // 验证环境变量被正确替换
         assert_eq!(loaded_config.name, "production_app");
@@ -535,7 +536,8 @@ backoff_ms = 2000
         // 使用 env_load_json 加载
         use crate::traits::EnvJsonLoad;
         let loaded_config: SingleFieldConfig =
-            SingleFieldConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load JSON with env vars");
+            SingleFieldConfig::env_load_json(temp_file.path(), &env_dict)
+                .expect("Failed to load JSON with env vars");
 
         // 验证环境变量被正确替换
         assert_eq!(loaded_config.value, "production_value");
@@ -566,8 +568,8 @@ backoff_ms = 2000
         env_dict.insert("ENABLED", ValueType::from("false"));
 
         // 测试加载
-        let loaded_config =
-            TestConfig::env_load_toml(temp_file.path(), &env_dict).expect("Failed to load TOML with env vars");
+        let loaded_config = TestConfig::env_load_toml(temp_file.path(), &env_dict)
+            .expect("Failed to load TOML with env vars");
 
         // 验证环境变量被正确替换
         assert_eq!(loaded_config.name, "production_app");
@@ -604,7 +606,8 @@ backoff_ms = 2000
         // 使用 env_load_yaml 加载
         use crate::traits::EnvYamlLoad;
         let loaded_config: SingleFieldConfig =
-            SingleFieldConfig::env_load_yaml(temp_file.path(), &env_dict).expect("Failed to load YAML with env vars");
+            SingleFieldConfig::env_load_yaml(temp_file.path(), &env_dict)
+                .expect("Failed to load YAML with env vars");
 
         // 验证环境变量被正确替换
         assert_eq!(loaded_config.value, "production_value");
@@ -635,7 +638,8 @@ backoff_ms = 2000
         // 使用 env_load_json 加载（未定义的变量应该保持原样）
         use crate::traits::EnvJsonLoad;
         let loaded_config: SingleFieldConfig =
-            SingleFieldConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load JSON with undefined var");
+            SingleFieldConfig::env_load_json(temp_file.path(), &env_dict)
+                .expect("Failed to load JSON with undefined var");
 
         // 未定义的变量应该保持原样
         assert_eq!(loaded_config.value, "${UNDEFINED_VAR}");
