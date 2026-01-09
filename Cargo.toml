@@ -2,7 +2,7 @@
 name = "orion_conf"
 authors = ["wukong<sec-wukong@outlook.com>"]
 edition = "2024"
-version = "0.3.0"
+version = "0.4.0"
 description = "conf storage"
 license = "MIT"
 repository = "https://github.com/galaxy-sec/orion-conf"
@@ -10,18 +10,19 @@ keywords = ["format", "utilities"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-orion-error = "~0.5"
-derive_more = { version = "2.0", features = ["full"] }
-derive-getters = "~0.5"
-serde = "~1.0"
-serde_derive = "~1.0"
-thiserror = "~2.0"
+orion-error = "0.5"
+orion-variate = "0.10"
+derive_more = { version = "2.1", features = ["full"] }
+derive-getters = "0.5"
+serde = "1.0"
+serde_derive = "1.0"
+thiserror = "2.0"
 
 # 可选格式依赖
-toml = { version = "~0.9", optional = true }
-serde_yaml = { version = "~0.9", optional = true }
-serde_ini = { version = "~0.2.0", optional = true }
-serde_json = { version = "~1.0", optional = true }
+toml = { version = "0.9", optional = true }
+serde_yaml = { version = "0.9", optional = true }
+serde_ini = { version = "0.2.0", optional = true }
+serde_json = { version = "1.0", optional = true }
 
 [features]
 # 基本特性（无格式依赖）

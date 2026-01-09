@@ -3,6 +3,7 @@ use orion_error::{ContextRecord, OperationContext, ToStructError};
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
 pub use serde_derive::{Deserialize, Serialize};
 use std::{fs, path::Path};
+use orion_variate::{EnvDict, EnvEvaluable};
 
 use crate::error::{ConfIOReason, OrionConfResult};
 
@@ -44,6 +45,9 @@ where
 use crate::traits::IniIO;
 
 #[cfg(feature = "ini")]
+use crate::traits::EnvIniLoad;
+
+#[cfg(feature = "ini")]
 impl<T> IniIO<T> for T
 where
     T: serde::de::DeserializeOwned + serde::Serialize,
@@ -60,8 +64,24 @@ where
     }
 }
 
+#[cfg(feature = "ini")]
+impl<T> EnvIniLoad<T> for T
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_ini(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_file(path, "ini", |content| {
+            let content = content.to_string().env_eval(dict);
+            serde_ini::de::from_str(&content).map_err(Into::into)
+        })
+    }
+}
+
 #[cfg(feature = "json")]
 use crate::traits::JsonIO;
+
+#[cfg(feature = "json")]
+use crate::traits::EnvJsonLoad;
 
 #[cfg(feature = "json")]
 impl<T> JsonIO<T> for T
@@ -80,9 +100,25 @@ where
     }
 }
 
+#[cfg(feature = "json")]
+impl<T> EnvJsonLoad<T> for T
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_json(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_file(path, "json", |content| {
+            let content = content.to_string().env_eval(dict);
+            serde_json::from_str(&content).map_err(Into::into)
+        })
+    }
+}
+
 // JsonStorageExt trait removed to avoid method conflicts
 #[cfg(feature = "toml")]
 use crate::traits::TomlIO;
+
+#[cfg(feature = "toml")]
+use crate::traits::EnvTomlLoad;
 
 #[cfg(feature = "toml")]
 impl<T> TomlIO<T> for T
@@ -98,8 +134,25 @@ where
         save_to_file(path, "toml", || toml::to_string(self).map_err(Into::into))
     }
 }
+
+#[cfg(feature = "toml")]
+impl<T> EnvTomlLoad<T> for T
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_toml(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_file(path, "toml", |content| {
+            let content = content.to_string().env_eval(dict);
+            toml::from_str(&content).map_err(Into::into)
+        })
+    }
+}
+
 #[cfg(feature = "yaml")]
 use crate::traits::YamlIO;
+
+#[cfg(feature = "yaml")]
+use crate::traits::EnvYamlLoad;
 
 #[cfg(feature = "yaml")]
 impl<T> YamlIO<T> for T
@@ -114,6 +167,19 @@ where
     fn save_yaml(&self, path: &Path) -> OrionConfResult<()> {
         save_to_file(path, "yaml", || {
             serde_yaml::to_string(self).map_err(Into::into)
+        })
+    }
+}
+
+#[cfg(feature = "yaml")]
+impl<T> EnvYamlLoad<T> for T
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_yaml(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_file(path, "yaml", |content| {
+            let content = content.to_string().env_eval(dict);
+            serde_yaml::from_str(&content).map_err(Into::into)
         })
     }
 }
@@ -399,5 +465,179 @@ mod tests {
 
         // 验证数据一致性
         assert_eq!(loaded_config, config);
+    }
+
+    // 测试用例 9: env_load_ini 环境变量替换测试
+    #[cfg(feature = "ini")]
+    #[test]
+    fn test_env_load_ini() {
+        use crate::traits::EnvIniLoad;
+        use orion_variate::{EnvDict, ValueType};
+
+        let ini_content = r#"
+name = ${APP_NAME}
+version = 2
+enabled = ${ENABLED}
+timeout_secs = 60
+
+[nested_config]
+retry_count = 5
+backoff_ms = 2000
+"#;
+        let temp_file = create_test_file_with_content(ini_content, ".ini");
+
+        // 创建环境变量字典
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("APP_NAME", ValueType::from("production_app"));
+        env_dict.insert("ENABLED", ValueType::from("false"));
+
+        // 测试加载
+        let loaded_config =
+            TestConfig::env_load_ini(temp_file.path(), &env_dict).expect("Failed to load INI with env vars");
+
+        // 验证环境变量被正确替换
+        assert_eq!(loaded_config.name, "production_app");
+        assert_eq!(loaded_config.version, 2);
+        assert_eq!(loaded_config.enabled, "false");
+        assert_eq!(loaded_config.timeout_secs, 60);
+        assert_eq!(loaded_config.nested_config.retry_count, 5);
+        assert_eq!(loaded_config.nested_config.backoff_ms, 2000);
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Getters)]
+    struct SingleFieldConfig {
+        value: String,
+    }
+
+    // 测试用例 10: env_load_json 环境变量替换测试
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_env_load_json() {
+        use crate::traits::JsonIO;
+        use orion_variate::{EnvDict, ValueType};
+
+        // 创建一个单字段配置
+        let config = SingleFieldConfig {
+            value: "placeholder".to_string(),
+        };
+        let temp_file = NamedTempFile::new().unwrap();
+        config.save_json(temp_file.path()).unwrap();
+
+        // 替换为环境变量模板
+        let mut json_content = std::fs::read_to_string(temp_file.path()).unwrap();
+        json_content = json_content.replace("placeholder", "${MY_VALUE}");
+        std::fs::write(temp_file.path(), &json_content).unwrap();
+
+        // 创建环境变量字典
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("MY_VALUE", ValueType::from("production_value"));
+
+        // 使用 env_load_json 加载
+        use crate::traits::EnvJsonLoad;
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load JSON with env vars");
+
+        // 验证环境变量被正确替换
+        assert_eq!(loaded_config.value, "production_value");
+    }
+
+    // 测试用例 11: env_load_toml 环境变量替换测试
+    #[cfg(feature = "toml")]
+    #[test]
+    fn test_env_load_toml() {
+        use crate::traits::EnvTomlLoad;
+        use orion_variate::{EnvDict, ValueType};
+
+        let toml_content = r#"
+name = "${APP_NAME}"
+version = 2
+enabled = "${ENABLED}"
+timeout_secs = 60
+
+[nested_config]
+retry_count = 5
+backoff_ms = 2000
+"#;
+        let temp_file = create_test_file_with_content(toml_content, ".toml");
+
+        // 创建环境变量字典
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("APP_NAME", ValueType::from("production_app"));
+        env_dict.insert("ENABLED", ValueType::from("false"));
+
+        // 测试加载
+        let loaded_config =
+            TestConfig::env_load_toml(temp_file.path(), &env_dict).expect("Failed to load TOML with env vars");
+
+        // 验证环境变量被正确替换
+        assert_eq!(loaded_config.name, "production_app");
+        assert_eq!(loaded_config.version, 2);
+        assert_eq!(loaded_config.enabled, "false");
+        assert_eq!(loaded_config.timeout_secs, 60);
+        assert_eq!(loaded_config.nested_config.retry_count, 5);
+        assert_eq!(loaded_config.nested_config.backoff_ms, 2000);
+    }
+
+    // 测试用例 12: env_load_yaml 环境变量替换测试
+    #[cfg(feature = "yaml")]
+    #[test]
+    fn test_env_load_yaml() {
+        use crate::traits::YamlIO;
+        use orion_variate::{EnvDict, ValueType};
+
+        // 创建一个单字段配置
+        let config = SingleFieldConfig {
+            value: "placeholder".to_string(),
+        };
+        let temp_file = NamedTempFile::new().unwrap();
+        config.save_yaml(temp_file.path()).unwrap();
+
+        // 替换为环境变量模板
+        let mut yaml_content = std::fs::read_to_string(temp_file.path()).unwrap();
+        yaml_content = yaml_content.replace("placeholder", "${MY_VALUE}");
+        std::fs::write(temp_file.path(), &yaml_content).unwrap();
+
+        // 创建环境变量字典
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("MY_VALUE", ValueType::from("production_value"));
+
+        // 使用 env_load_yaml 加载
+        use crate::traits::EnvYamlLoad;
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_load_yaml(temp_file.path(), &env_dict).expect("Failed to load YAML with env vars");
+
+        // 验证环境变量被正确替换
+        assert_eq!(loaded_config.value, "production_value");
+    }
+
+    // 测试用例 13: env_load_json 未定义环境变量测试
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_env_load_json_undefined_var() {
+        use crate::traits::JsonIO;
+        use orion_variate::EnvDict;
+
+        // 创建一个单字段配置
+        let config = SingleFieldConfig {
+            value: "placeholder".to_string(),
+        };
+        let temp_file = NamedTempFile::new().unwrap();
+        config.save_json(temp_file.path()).unwrap();
+
+        // 替换为未定义的环境变量
+        let mut json_content = std::fs::read_to_string(temp_file.path()).unwrap();
+        json_content = json_content.replace("placeholder", "${UNDEFINED_VAR}");
+        std::fs::write(temp_file.path(), &json_content).unwrap();
+
+        // 创建空的环境变量字典
+        let env_dict = EnvDict::new();
+
+        // 使用 env_load_json 加载（未定义的变量应该保持原样）
+        use crate::traits::EnvJsonLoad;
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load JSON with undefined var");
+
+        // 未定义的变量应该保持原样
+        assert_eq!(loaded_config.value, "${UNDEFINED_VAR}");
     }
 }

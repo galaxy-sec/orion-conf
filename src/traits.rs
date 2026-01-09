@@ -1,5 +1,6 @@
 pub use derive_getters::Getters;
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, ToStructError, UvsConfFrom};
+use orion_variate::EnvDict;
 pub use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -28,6 +29,15 @@ where
     fn save_conf(&self, path: &Path) -> OrionConfResult<()>;
 }
 
+// 通用配置 trait - 默认行为基于可用特性
+pub trait EnvLoadable<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    // 推荐方法名
+    fn env_load_conf(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+}
+
 // 格式特定的 trait - 每个都使用条件编译
 
 #[cfg(feature = "ini")]
@@ -46,6 +56,14 @@ where
     fn save_ini(&self, path: &Path) -> OrionConfResult<()>;
 }
 
+#[cfg(feature = "ini")]
+pub trait EnvIniLoad<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_ini(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+}
+
 #[cfg(feature = "json")]
 pub trait JsonIO<T>
 where
@@ -62,6 +80,14 @@ where
     fn save_json(&self, path: &Path) -> OrionConfResult<()>;
 }
 
+#[cfg(feature = "json")]
+pub trait EnvJsonLoad<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_json(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+}
+
 #[cfg(feature = "toml")]
 pub trait TomlIO<T>
 where
@@ -76,6 +102,14 @@ where
         }
     }
     fn save_toml(&self, path: &Path) -> OrionConfResult<()>;
+}
+
+#[cfg(feature = "toml")]
+pub trait EnvTomlLoad<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_toml(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
 }
 
 #[cfg(feature = "toml")]
@@ -122,6 +156,14 @@ where
     fn save_yml(&self, path: &Path) -> OrionConfResult<()> {
         self.save_yaml(path)
     }
+}
+
+#[cfg(feature = "yaml")]
+pub trait EnvYamlLoad<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    fn env_load_yaml(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
 }
 
 // Storage trait 别名（计划弃用）
