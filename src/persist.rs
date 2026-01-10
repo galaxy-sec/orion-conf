@@ -41,7 +41,7 @@ where
 }
 
 /// Helper to unify env string evaluation + deserialization across formats
-fn load_from_env_string<T, F, E>(
+fn parse_env_string<T, F, E>(
     operation_name: &str,
     content: &str,
     dict: &EnvDict,
@@ -100,7 +100,7 @@ where
     }
 
     fn env_parse_ini(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_env_string("ini", content, dict, |evaluated| {
+        parse_env_string("ini", content, dict, |evaluated| {
             serde_ini::de::from_str(evaluated)
         })
     }
@@ -142,7 +142,7 @@ where
     }
 
     fn env_parse_json(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_env_string("json", content, dict, |evaluated| {
+        parse_env_string("json", content, dict, |evaluated| {
             serde_json::from_str(evaluated)
         })
     }
@@ -183,7 +183,7 @@ where
     }
 
     fn env_parse_toml(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_env_string("toml", content, dict, |evaluated| toml::from_str(evaluated))
+        parse_env_string("toml", content, dict, |evaluated| toml::from_str(evaluated))
     }
 }
 
@@ -223,7 +223,7 @@ where
     }
 
     fn env_parse_yaml(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_env_string("yaml", content, dict, |evaluated| {
+        parse_env_string("yaml", content, dict, |evaluated| {
             serde_yaml::from_str(evaluated)
         })
     }
