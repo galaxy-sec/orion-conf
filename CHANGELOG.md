@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
     - `EnvYamlLoad::env_load_yaml()` - YAML format with env var substitution
   - Comprehensive test coverage for all `env_load_*` methods
   - Support for undefined environment variables (preserved as-is in output)
+  - Inline parsing APIs `env_parse_*` for INI/JSON/TOML/YAML plus shared `parse_env_string` helper,
+    enabling env substitution from in-memory strings and dedicated tests per format
 - Changed
   - All deprecated APIs from v0.3.0 have been removed
   - Trait method implementations now use `load_*` naming exclusively

@@ -41,6 +41,7 @@ where
 }
 
 /// Helper to unify env string evaluation + deserialization across formats
+#[allow(dead_code)]
 fn parse_env_string<T, F, E>(
     operation_name: &str,
     content: &str,
