@@ -4,7 +4,7 @@ pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
 #[allow(unused_imports)]
 use orion_variate::{EnvDict, EnvEvaluable};
 pub use serde_derive::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{fmt::Display, fs, path::Path};
 
 use crate::error::{ConfIOReason, OrionConfResult};
 
@@ -38,6 +38,28 @@ where
     fs::write(path, data_content).owe_res().with(&ctx)?;
     ctx.mark_suc();
     Ok(())
+}
+
+/// Helper to unify env string evaluation + deserialization across formats
+fn load_from_env_string<T, F, E>(
+    operation_name: &str,
+    content: &str,
+    dict: &EnvDict,
+    deserializer: F,
+) -> OrionConfResult<T>
+where
+    F: FnOnce(&str) -> Result<T, E>,
+    E: Display,
+{
+    let mut ctx = OperationContext::want(format!("load object from {operation_name} env string"))
+        .with_auto_log();
+    ctx.record("source", "inline content");
+    let evaluated = content.to_string().env_eval(dict);
+    let loaded = deserializer(&evaluated)
+        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
+        .with(&ctx)?;
+    ctx.mark_suc();
+    Ok(loaded)
 }
 
 // ConfigIO trait 的默认实现已在 traits.rs 中处理
@@ -76,6 +98,12 @@ where
             serde_ini::de::from_str(&content).map_err(Into::into)
         })
     }
+
+    fn env_parse_ini(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_env_string("ini", content, dict, |evaluated| {
+            serde_ini::de::from_str(evaluated)
+        })
+    }
 }
 
 #[cfg(feature = "json")]
@@ -110,6 +138,12 @@ where
         load_from_file(path, "json", |content| {
             let content = content.to_string().env_eval(dict);
             serde_json::from_str(&content).map_err(Into::into)
+        })
+    }
+
+    fn env_parse_json(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_env_string("json", content, dict, |evaluated| {
+            serde_json::from_str(evaluated)
         })
     }
 }
@@ -147,6 +181,10 @@ where
             toml::from_str(&content).map_err(Into::into)
         })
     }
+
+    fn env_parse_toml(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_env_string("toml", content, dict, |evaluated| toml::from_str(evaluated))
+    }
 }
 
 #[cfg(feature = "yaml")]
@@ -181,6 +219,12 @@ where
         load_from_file(path, "yaml", |content| {
             let content = content.to_string().env_eval(dict);
             serde_yaml::from_str(&content).map_err(Into::into)
+        })
+    }
+
+    fn env_parse_yaml(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
+        load_from_env_string("yaml", content, dict, |evaluated| {
+            serde_yaml::from_str(evaluated)
         })
     }
 }
@@ -643,5 +687,73 @@ backoff_ms = 2000
 
         // 未定义的变量应该保持原样
         assert_eq!(loaded_config.value, "${UNDEFINED_VAR}");
+    }
+
+    #[cfg(feature = "ini")]
+    #[test]
+    fn test_env_parse_ini_inline_content() {
+        use crate::traits::EnvIniLoad;
+        use orion_variate::{EnvDict, ValueType};
+
+        let ini_content = "value = ${MY_VALUE}";
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("MY_VALUE", ValueType::from("inline_value"));
+
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_parse_ini(ini_content, &env_dict)
+                .expect("Failed to load inline INI content");
+
+        assert_eq!(loaded_config.value, "inline_value");
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn test_env_parse_json_inline_content() {
+        use crate::traits::EnvJsonLoad;
+        use orion_variate::{EnvDict, ValueType};
+
+        let json_content = r#"{"value":"${MY_VALUE}"}"#;
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("MY_VALUE", ValueType::from("inline_json"));
+
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_parse_json(json_content, &env_dict)
+                .expect("Failed to load inline JSON content");
+
+        assert_eq!(loaded_config.value, "inline_json");
+    }
+
+    #[cfg(feature = "toml")]
+    #[test]
+    fn test_env_parse_toml_inline_content() {
+        use crate::traits::EnvTomlLoad;
+        use orion_variate::{EnvDict, ValueType};
+
+        let toml_content = "value = \"${MY_VALUE}\"";
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("MY_VALUE", ValueType::from("inline_toml"));
+
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_parse_toml(toml_content, &env_dict)
+                .expect("Failed to load inline TOML content");
+
+        assert_eq!(loaded_config.value, "inline_toml");
+    }
+
+    #[cfg(feature = "yaml")]
+    #[test]
+    fn test_env_parse_yaml_inline_content() {
+        use crate::traits::EnvYamlLoad;
+        use orion_variate::{EnvDict, ValueType};
+
+        let yaml_content = "value: ${MY_VALUE}";
+        let mut env_dict = EnvDict::new();
+        env_dict.insert("MY_VALUE", ValueType::from("inline_yaml"));
+
+        let loaded_config: SingleFieldConfig =
+            SingleFieldConfig::env_parse_yaml(yaml_content, &env_dict)
+                .expect("Failed to load inline YAML content");
+
+        assert_eq!(loaded_config.value, "inline_yaml");
     }
 }

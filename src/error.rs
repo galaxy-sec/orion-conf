@@ -43,4 +43,3 @@ impl From<UvsReason> for ConfIOReason {
 
 pub type OrionConfResult<T> = Result<T, StructError<ConfIOReason>>;
 pub type OrionConfError = StructError<ConfIOReason>;
-

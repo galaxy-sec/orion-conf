@@ -47,6 +47,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_ini(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+    fn env_parse_ini(content: &str, dict: &EnvDict) -> OrionConfResult<T>;
 }
 
 #[cfg(feature = "json")]
@@ -64,6 +65,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_json(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+    fn env_parse_json(content: &str, dict: &EnvDict) -> OrionConfResult<T>;
 }
 
 #[cfg(feature = "toml")]
@@ -81,6 +83,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_toml(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+    fn env_parse_toml(content: &str, dict: &EnvDict) -> OrionConfResult<T>;
 }
 
 #[cfg(feature = "toml")]
@@ -107,6 +110,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_yaml(path: &Path, dict: &EnvDict) -> OrionConfResult<T>;
+    fn env_parse_yaml(content: &str, dict: &EnvDict) -> OrionConfResult<T>;
 }
 
 pub trait LoadHook {
