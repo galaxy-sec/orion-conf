@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.2 - 2026-01-11
+
+### Added
+- Added `env_load_file` helper function to unify file loading with environment variable evaluation and warning
+- Automatic detection and warning for undefined environment variables in all `env_load_*` methods
+- Warning messages output to both stderr (via `eprintln!`) and logging system (via `log::warn!`)
+- Warning format: `vars not value : VAR1,VAR2,...`
+- Three demo examples showcasing the warning functionality:
+  - `env_var_warning_simple.rs` - Simple demonstration (recommended)
+  - `env_var_warning_demo.rs` - Complete demonstration with 4 scenarios
+  - `env_var_with_urls.rs` - Demonstration with complex URL values
+- Documentation files:
+  - `TESTING_ENV_WARNINGS.md` - Testing guide for environment variable warnings
+  - `CHANGELOG_ENV_WARNINGS.md` - Detailed changelog for env warning features
+
+### Changed
+- Refactored all `env_load_*` methods to use the unified `env_load_file` function:
+  - `env_load_ini` (src/persist.rs:135-139)
+  - `env_load_json` (src/persist.rs:176-180)
+  - `env_load_toml` (src/persist.rs:216-218)
+  - `env_load_yaml` (src/persist.rs:253-257)
+- Updated dependency: `orion-variate` from `0.10` to `>=0.10.8, <0.11`
+- All display messages and prompts changed to English
+
+### Fixed
+- Undefined environment variables now trigger warnings while allowing loading to continue (non-breaking)
+- Variables that are not defined remain in `${VAR_NAME}` format instead of causing errors
+
+### Dependencies
+- **orion-variate**: Updated to `>=0.10.8, <0.11`
+  - v0.10.8 fixes bugs when handling values containing `://` (such as database URLs)
+  - Critical update for users working with database connection strings and API endpoints
+
+### Testing
+- All 22 unit tests passing
+- Added 3 comprehensive demo programs for manual testing
+- Added integration tests for URL values with `://` protocol schemes
+
+### Notes
+- **Backward Compatible**: v0.4.2 is fully backward compatible with v0.4.1
+- **No Migration Needed**: The new warning functionality is additive and does not change existing behavior
+- **Recommended Update**: Users working with database URLs should update to benefit from orion-variate v0.10.8 fixes
+
 ## 0.4.0
 
 - Added
