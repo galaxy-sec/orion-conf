@@ -11,12 +11,13 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 orion-error = "0.5"
-orion-variate = "0.10"
+orion-variate = ">=0.10.8, <0.11"
 derive_more = { version = "2.1", features = ["full"] }
 derive-getters = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
 thiserror = "2.0"
+log = "0.4"
 
 # 可选格式依赖
 toml = { version = "0.9", optional = true }
@@ -74,3 +75,18 @@ path = "examples/no_feature_error_test.rs"
 [[example]]
 name = "no_feature_test"
 path = "examples/no_feature_test.rs"
+
+[[example]]
+name = "env_var_warning_demo"
+path = "examples/env_var_warning_demo.rs"
+required-features = ["json"]
+
+[[example]]
+name = "env_var_warning_simple"
+path = "examples/env_var_warning_simple.rs"
+required-features = ["json"]
+
+[[example]]
+name = "env_var_with_urls"
+path = "examples/env_var_with_urls.rs"
+required-features = ["json"]

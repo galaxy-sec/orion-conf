@@ -1,6 +1,7 @@
 pub use derive_getters::Getters;
 use orion_error::{ContextRecord, OperationContext, ToStructError};
 pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
+use orion_variate::EnvChecker;
 #[allow(unused_imports)]
 use orion_variate::{EnvDict, EnvEvaluable};
 pub use serde_derive::{Deserialize, Serialize};
@@ -56,6 +57,11 @@ where
         .with_auto_log();
     ctx.record("source", "inline content");
     let evaluated = content.to_string().env_eval(dict);
+    if evaluated.needs_env_eval() {
+        let msg = format!("vars not value : {}", evaluated.list_env_vars().join(","));
+        eprintln!("{}", msg);
+        log::warn!(target : "conf", "{}", msg);
+    }
     let loaded = deserializer(&evaluated)
         .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
         .with(&ctx)?;
@@ -63,7 +69,40 @@ where
     Ok(loaded)
 }
 
-// ConfigIO trait 的默认实现已在 traits.rs 中处理
+/// Helper to unify file loading + env evaluation + deserialization across formats
+#[allow(dead_code)]
+fn env_load_file<T, F, E>(
+    path: &Path,
+    operation_name: &str,
+    dict: &EnvDict,
+    deserializer: F,
+) -> OrionConfResult<T>
+where
+    F: FnOnce(&str) -> Result<T, E>,
+    E: Display,
+{
+    let mut ctx = OperationContext::want(format!("load object from {operation_name} file with env"))
+        .with_auto_log();
+    ctx.record("from path", path);
+
+    let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
+    let evaluated = file_content.env_eval(dict);
+
+    if evaluated.needs_env_eval() {
+        let msg = format!("vars not value : {}", evaluated.list_env_vars().join(","));
+        eprintln!("{}", msg);
+        log::warn!(target: "conf", "{}", msg);
+    }
+
+    let loaded = deserializer(&evaluated)
+        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
+        .with(&ctx)?;
+
+    ctx.mark_suc();
+    Ok(loaded)
+}
+
+// Default implementation of ConfigIO trait is handled in traits.rs
 
 #[cfg(feature = "ini")]
 use crate::traits::IniIO;
@@ -94,9 +133,8 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_ini(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_file(path, "ini", |content| {
-            let content = content.to_string().env_eval(dict);
-            serde_ini::de::from_str(&content).map_err(Into::into)
+        env_load_file(path, "ini", dict, |evaluated| {
+            serde_ini::de::from_str(evaluated)
         })
     }
 
@@ -136,9 +174,8 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_json(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_file(path, "json", |content| {
-            let content = content.to_string().env_eval(dict);
-            serde_json::from_str(&content).map_err(Into::into)
+        env_load_file(path, "json", dict, |evaluated| {
+            serde_json::from_str(evaluated)
         })
     }
 
@@ -177,10 +214,7 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_toml(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_file(path, "toml", |content| {
-            let content = content.to_string().env_eval(dict);
-            toml::from_str(&content).map_err(Into::into)
-        })
+        env_load_file(path, "toml", dict, |evaluated| toml::from_str(evaluated))
     }
 
     fn env_parse_toml(content: &str, dict: &EnvDict) -> OrionConfResult<T> {
@@ -217,9 +251,8 @@ where
     T: serde::de::DeserializeOwned,
 {
     fn env_load_yaml(path: &Path, dict: &EnvDict) -> OrionConfResult<T> {
-        load_from_file(path, "yaml", |content| {
-            let content = content.to_string().env_eval(dict);
-            serde_yaml::from_str(&content).map_err(Into::into)
+        env_load_file(path, "yaml", dict, |evaluated| {
+            serde_yaml::from_str(evaluated)
         })
     }
 
