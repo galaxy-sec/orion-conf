@@ -1,4 +1,4 @@
-use orion_variate::{EnvChecker, EnvDict, EnvEvaluable, ValueType};
+use orion_variate::{EnvDict, EnvEvaluable, ValueType};
 
 fn main() {
     println!("=== 测试 1: 简单字符串 ===");

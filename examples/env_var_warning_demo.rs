@@ -51,8 +51,8 @@ fn main() {
     fs::write(temp_file.path(), json_content).unwrap();
 
     println!("Loading config...");
-    let config: Config = Config::env_load_json(temp_file.path(), &env_dict)
-        .expect("Failed to load config");
+    let config: Config =
+        Config::env_load_json(temp_file.path(), &env_dict).expect("Failed to load config");
 
     println!("✓ Loaded successfully (no warnings to stderr)");
     println!("Result:");
@@ -79,13 +79,16 @@ fn main() {
     println!("Loading config...");
     println!("⚠️  Watch for stderr output below (should display: vars not value : VERSION)\n");
 
-    let config: Config = Config::env_load_json(temp_file.path(), &env_dict)
-        .expect("Failed to load config");
+    let config: Config =
+        Config::env_load_json(temp_file.path(), &env_dict).expect("Failed to load config");
 
     println!("\n✓ Loaded successfully (but VERSION was not replaced)");
     println!("Result:");
     println!("  app_name: {}", config.app_name);
-    println!("  version: {} (undefined variable kept as-is)", config.version);
+    println!(
+        "  version: {} (undefined variable kept as-is)",
+        config.version
+    );
     println!("  port: {}\n", config.port);
 
     // Scenario 3: All environment variables undefined - warnings expected
@@ -102,10 +105,12 @@ fn main() {
     fs::write(temp_file.path(), json_content).unwrap();
 
     println!("Loading config...");
-    println!("⚠️  Watch for stderr output below (should display: vars not value : APP_NAME,VERSION)\n");
+    println!(
+        "⚠️  Watch for stderr output below (should display: vars not value : APP_NAME,VERSION)\n"
+    );
 
-    let config: Config = Config::env_load_json(temp_file.path(), &env_dict)
-        .expect("Failed to load config");
+    let config: Config =
+        Config::env_load_json(temp_file.path(), &env_dict).expect("Failed to load config");
 
     println!("\n✓ Loaded successfully (but all variables were not replaced)");
     println!("Result:");
@@ -124,10 +129,12 @@ fn main() {
     println!("  (no environment variables provided)\n");
 
     println!("Parsing config...");
-    println!("⚠️  Watch for stderr output below (should display: vars not value : APP_NAME,VERSION)\n");
+    println!(
+        "⚠️  Watch for stderr output below (should display: vars not value : APP_NAME,VERSION)\n"
+    );
 
-    let config: Config = Config::env_parse_json(json_content, &env_dict)
-        .expect("Failed to parse config");
+    let config: Config =
+        Config::env_parse_json(json_content, &env_dict).expect("Failed to parse config");
 
     println!("\n✓ Parsed successfully");
     println!("Result:");
@@ -144,5 +151,7 @@ fn main() {
     println!("  3. Also output to logging system (log::warn!, if configured)");
     println!("  4. Undefined variables kept as ${{VAR_NAME}} format");
     println!("  5. Loading does not fail, only warns\n");
-    println!("Tip: To clearly see stderr output, use: cargo run --example env_var_warning_demo --features json 2>&1");
+    println!(
+        "Tip: To clearly see stderr output, use: cargo run --example env_var_warning_demo --features json 2>&1"
+    );
 }

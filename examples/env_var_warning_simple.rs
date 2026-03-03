@@ -83,7 +83,9 @@ fn main() {
 
     println!("=== Demo Complete ===\n");
     println!("Summary:");
-    println!("  - env_load_file and parse_env_string automatically detect undefined environment variables");
+    println!(
+        "  - env_load_file and parse_env_string automatically detect undefined environment variables"
+    );
     println!("  - Warning format: 'vars not value : VAR1,VAR2,...'");
     println!("  - Warnings output to stderr (eprintln!) and log (log::warn!)");
     println!("  - Undefined variables kept as ${{VAR_NAME}} format");

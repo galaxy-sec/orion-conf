@@ -41,8 +41,14 @@ fn main() {
     println!("============================================================");
 
     let mut env_dict = EnvDict::new();
-    env_dict.insert("DATABASE_URL", ValueType::from("postgresql://user:pass@localhost:5432/mydb"));
-    env_dict.insert("API_ENDPOINT", ValueType::from("https://api.example.com/v1"));
+    env_dict.insert(
+        "DATABASE_URL",
+        ValueType::from("postgresql://user:pass@localhost:5432/mydb"),
+    );
+    env_dict.insert(
+        "API_ENDPOINT",
+        ValueType::from("https://api.example.com/v1"),
+    );
 
     println!("Environment variables:");
     println!("  DATABASE_URL = postgresql://user:pass@localhost:5432/mydb");
@@ -52,8 +58,8 @@ fn main() {
     fs::write(temp_file.path(), json_content).unwrap();
 
     println!("Loading config...");
-    let config: DatabaseConfig = DatabaseConfig::env_load_json(temp_file.path(), &env_dict)
-        .expect("Failed to load config");
+    let config: DatabaseConfig =
+        DatabaseConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load config");
 
     println!("✓ Loaded successfully (no warnings)");
     println!("Result:");
@@ -67,7 +73,10 @@ fn main() {
     println!("============================================================");
 
     let mut env_dict = EnvDict::new();
-    env_dict.insert("DATABASE_URL", ValueType::from("postgresql://localhost/mydb"));
+    env_dict.insert(
+        "DATABASE_URL",
+        ValueType::from("postgresql://localhost/mydb"),
+    );
     // API_ENDPOINT is not defined
 
     println!("Environment variables:");
@@ -80,8 +89,8 @@ fn main() {
     println!("Loading config...");
     println!("⚠️  Watch for stderr output:\n");
 
-    let config: DatabaseConfig = DatabaseConfig::env_load_json(temp_file.path(), &env_dict)
-        .expect("Failed to load config");
+    let config: DatabaseConfig =
+        DatabaseConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load config");
 
     println!("\n✓ Loaded successfully");
     println!("Result:");
@@ -95,8 +104,14 @@ fn main() {
     println!("============================================================");
 
     let mut env_dict = EnvDict::new();
-    env_dict.insert("DATABASE_URL", ValueType::from("mongodb://admin:password@mongo-server:27017/production"));
-    env_dict.insert("API_ENDPOINT", ValueType::from("http://internal-api:8080/graphql"));
+    env_dict.insert(
+        "DATABASE_URL",
+        ValueType::from("mongodb://admin:password@mongo-server:27017/production"),
+    );
+    env_dict.insert(
+        "API_ENDPOINT",
+        ValueType::from("http://internal-api:8080/graphql"),
+    );
 
     println!("Environment variables:");
     println!("  DATABASE_URL = mongodb://admin:password@mongo-server:27017/production");
@@ -105,8 +120,8 @@ fn main() {
     let temp_file = NamedTempFile::new().unwrap();
     fs::write(temp_file.path(), json_content).unwrap();
 
-    let config: DatabaseConfig = DatabaseConfig::env_load_json(temp_file.path(), &env_dict)
-        .expect("Failed to load config");
+    let config: DatabaseConfig =
+        DatabaseConfig::env_load_json(temp_file.path(), &env_dict).expect("Failed to load config");
 
     println!("✓ Loaded successfully");
     println!("Result:");
