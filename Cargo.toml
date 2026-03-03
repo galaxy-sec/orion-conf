@@ -2,7 +2,7 @@
 name = "orion_conf"
 authors = ["wukong<sec-wukong@outlook.com>"]
 edition = "2024"
-version = "0.4.2"
+version = "0.5.0"
 description = "conf storage"
 license = "MIT"
 repository = "https://github.com/galaxy-sec/orion-conf"
@@ -10,8 +10,8 @@ keywords = ["format", "utilities"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-orion-error = "0.5"
-orion-variate = ">=0.10.8, <0.11"
+orion-error = "0.6"
+orion-variate = "0.11"
 derive_more = { version = "2.1", features = ["full"] }
 derive-getters = "0.5"
 serde = "1.0"

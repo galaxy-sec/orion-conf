@@ -1,6 +1,7 @@
 pub use derive_getters::Getters;
+pub use orion_error::UvsFrom as UvsConfFrom;
 use orion_error::{ContextRecord, OperationContext, ToStructError};
-pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsConfFrom};
+pub use orion_error::{ErrorOwe, ErrorWith, StructError, UvsFrom};
 use orion_variate::EnvChecker;
 #[allow(unused_imports)]
 use orion_variate::{EnvDict, EnvEvaluable};
@@ -20,7 +21,7 @@ where
     ctx.record("from path", path);
     let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
     let loaded: T = deserializer(file_content.as_str())
-        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
+        .map_err(|e| ConfIOReason::from(e.to_string()).to_err())
         .with(&ctx)?;
     ctx.mark_suc();
     Ok(loaded)
@@ -34,7 +35,7 @@ where
     let mut ctx = OperationContext::want(format!("save {operation_name}")).with_auto_log();
     ctx.record("from path", path);
     let data_content = serializer()
-        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
+        .map_err(|e| ConfIOReason::from(e.to_string()).to_err())
         .with(&ctx)?;
     fs::write(path, data_content).owe_res().with(&ctx)?;
     ctx.mark_suc();
@@ -63,7 +64,7 @@ where
         log::warn!(target : "conf", "{}", msg);
     }
     let loaded = deserializer(&evaluated)
-        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
+        .map_err(|e| ConfIOReason::from(e.to_string()).to_err())
         .with(&ctx)?;
     ctx.mark_suc();
     Ok(loaded)
@@ -81,8 +82,9 @@ where
     F: FnOnce(&str) -> Result<T, E>,
     E: Display,
 {
-    let mut ctx = OperationContext::want(format!("load object from {operation_name} file with env"))
-        .with_auto_log();
+    let mut ctx =
+        OperationContext::want(format!("load object from {operation_name} file with env"))
+            .with_auto_log();
     ctx.record("from path", path);
 
     let file_content = fs::read_to_string(path).owe_res().with(&ctx)?;
@@ -95,7 +97,7 @@ where
     }
 
     let loaded = deserializer(&evaluated)
-        .map_err(|e| ConfIOReason::from_conf(e.to_string()).to_err())
+        .map_err(|e| ConfIOReason::from(e.to_string()).to_err())
         .with(&ctx)?;
 
     ctx.mark_suc();

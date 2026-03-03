@@ -16,8 +16,8 @@ fn main() {
     env_dict.insert("API_KEY", ValueType::from("secret-key-123"));
 
     println!("环境变量:");
-    println!("  DB_URL = {}", "postgresql://localhost/mydb");
-    println!("  API_KEY = {}", "secret-key-123");
+    println!("  DB_URL = postgresql://localhost/mydb");
+    println!("  API_KEY = secret-key-123");
     println!();
 
     let result = json_multiline.to_string().env_eval(&env_dict);

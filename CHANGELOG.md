@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+- Updated dependencies:
+  - `orion-error` from `0.5` to `0.6`
+  - `orion-variate` from `>=0.10.8, <0.11` to `0.11`
+- Migrated re-exports from removed `UvsConfFrom` to `UvsFrom` while keeping a compatibility alias (`UvsConfFrom`)
+
+### Fixed
+- Fixed compile errors caused by `orion-error 0.6` API changes:
+  - Replaced `ConfIOReason::from_conf(e.to_string())` with `ConfIOReason::from(e.to_string())` in persistence helpers
+  - Updated imports in `src/error.rs`, `src/persist.rs`, and `src/traits.rs`
+- Fixed clippy `print_literal` warnings in `examples/test_multiline_json.rs` so strict `-D warnings` passes
+
 ## 0.4.2 - 2026-01-11
 
 ### Added
